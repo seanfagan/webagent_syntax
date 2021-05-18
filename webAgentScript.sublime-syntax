@@ -1,0 +1,935 @@
+%YAML 1.2
+---
+# See https://www.sublimetext.com/docs/3/syntax.html
+# See https://www.sublimetext.com/docs/3/scope_naming.html
+
+# todo: wbt
+
+# todo: variable IS (Ndigits)
+# todo: use meta scopes more often
+# todo: check for bugs on patterns that search for newline
+
+name: webAgent Script
+file_extensions:
+  - wbs
+  - wbc
+  - wbh
+scope: source.webagent
+
+contexts:
+  prototype:
+  # The prototype context is prepended to all contexts
+    - include: comments
+
+  main:
+    # The main context is the starting point of our syntax.
+    - include: expressions
+
+  expressions:
+    - include: define_data
+    - include: output
+    - include: control_flow
+    - include: data_manip
+    - include: other
+    # Catch any keywords not caught by previous rules.
+    - include: catchall
+    # - include: catchall_debug
+
+  # ---------------------
+  # ---- Define Data ----
+  # ---------------------
+  define_data:
+    # Syntax:
+    #     DEFINE DATA
+    #     ...
+    #     END-DEFINE
+    - match: (?i)(?<![\w-])define\s+data(?![\w-])
+      scope: keyword.control.definedata.webagent
+      push: inside_define_data
+
+  inside_define_data:
+    # Syntax:
+    #     level-number variable-name [format [init]]
+    #     level-number REDEFINE variable-name
+    #     USING wbd-name
+    # using
+    - match: (?i)(?<![\w-])using(?![\w-])
+      scope: storage.type.function.using.webagent
+      push:
+        - match: (?<![\w-])\s+(?![\w-])
+          scope: entity.name.namespace.webagent
+          pop: true
+
+    # field definition
+    - match: (?<![\w-])\d(?![\w-])
+      scope: storage.modifier.level.webagent
+      push: dd_field_name
+
+    # end
+    - match: (?i)(?<![\w-])end-define(?![\w-])
+      scope: keyword.control.definedata.webagent
+      pop: true
+
+  dd_field_name:
+    # Match: REDEFINE variable-name
+    - match: (?i)(?<![\w-])redefine(?![\w-])
+      scope: storage.modifier.redefine.webagent
+      set:
+        - match: (?<=\s)[#a-zA-Z][\w-]*
+          scope: variable.other.member.webagent
+          pop: true
+
+    # Match variable name.
+    - match: (?<=\s)[#a-zA-Z][\w-]*
+      scope: variable.other.member.webagent
+      set: dd_field_format_begin
+
+  dd_field_format_begin:
+    # Match open parens for beginning of format-length.
+    - match: \(
+      scope:  punctuation.section.parens.begin.webagent
+      set: dd_field_format
+
+  dd_field_format:
+    # Syntax per type of field:
+    #     Alphanumeric:  (Alength[/array-def])
+    #     Numeric:       (Nint[.frac][/array-def])
+    #     Logical:       (L[/array-def])
+    #     Group:         [(array-def)]
+    #     Broker server: (BROKER)
+    - meta_scope: meta.parens.webagent
+
+    # alphanumeric
+    - match: (?i)a\d+
+      scope: storage.type.alphanumeric.webagent
+      set:
+        - match: \/
+          scope: punctuation.separator.array.webagent
+          set: dd_field_format_array
+        - include: dd_field_format_end
+
+    # numeric
+    - match: (?i)n\d+(\.\d+)?
+      scope: storage.type.numeric.webagent
+      set:
+        - match: \/
+          scope: punctuation.separator.array.webagent
+          set: dd_field_format_array
+        - include: dd_field_format_end
+
+    # logical
+    - match: (?i)l
+      scope: storage.type.logical.webagent
+      set:
+        - match: \/
+          scope: punctuation.separator.array.webagent
+          set: dd_field_format_array
+        - include: dd_field_format_end
+
+    # broker
+    - match: (?i)broker
+      scope: storage.type.broker.webagent
+
+    # groups
+    - include: dd_field_format_array
+
+  dd_field_format_array:
+    # Syntax:
+    #     [start:]last[,[start:]last]...
+    - match: \d+(:\d+)?
+      scope: storage.modifier.array.webagent
+    - match: \,
+      scope: punctuation.separator.dimension.webagent
+    - include: dd_field_format_end
+
+  dd_field_format_end:
+    # Match close parens for ending of format-length.
+    - match: \)
+      scope: punctuation.section.parens.end.webagent
+      set: dd_field_init
+
+  dd_field_init:
+    # Syntax:
+    #     {INIT|CONST} [ALL] value
+    - match: (?i)(?<![\w-])(init|const)(\s+all)?
+      scope: storage.modifier.init.webagent
+      set:
+        - match: <
+          scope: punctuation.definition.generic.begin.webagent
+          set:
+            - meta_scope: meta.generic.webagent meta.init.webagent
+            - match: \>
+              scope: punctuation.definition.generic.end.webagent
+              pop: true
+            - include: expressions
+    - match: $(?=\n)
+      pop: true
+
+  # ----------------
+  # ---- Output ----
+  # ----------------
+  output:
+    - include: write
+    - include: wpage
+
+  write:
+    # Syntax:
+    #     WRITE {element|/}
+    - match: (?i)(?<![\w-])write(?![\w-])
+      scope: variable.function.write.webagent
+      push:
+        # The '/' character causes a newline character when inside a write statement.
+        # Pop when we reach a newline.
+        - match: \/
+          scope: constant.character.newline.webagent
+        - match: $(?=\n)
+          pop: true
+        - include: expressions
+
+  wpage:
+    # Syntax:
+    #     WPAGE template-name
+    - match: (?i)(?<![\w-])wpage(?![\w-])
+      scope: variable.function.wpage.webagent
+      push:
+        # Match first word as wpage template name.
+        - match: (?i)(?<![\w-])[\w-]+(?![\w-])
+          scope: entity.name.namespace.webagent
+          pop: true
+        - include: expressions
+
+  # ----------------------
+  # ---- Control Flow ----
+  # ----------------------
+  control_flow:
+    - include: if
+    - include: decide_for
+    - include: decide_on
+    - include: repeat
+    - include: for
+    - match: (?i)(?<![\w-])invoke|ignore|terminate(?![\w-])
+      scope: keyword.control.flow.webagent
+
+  if:
+    # Syntax:
+    #     IF condition
+    #         codeblock
+    #     [ELSE
+    #         codeblock]
+    #     END-IF
+    - match: (?i)(?<!-)(?<![\w-])if(?![\w-])
+      scope: keyword.control.conditional.if.webagent
+      push:
+        - match: (?i)(?<![\w-])else(?![\w-])
+          scope: keyword.control.conditional.if.webagent
+        - match: (?i)(?<![\w-])end-if(?![\w-])
+          scope: keyword.control.conditional.if.webagent
+          pop: true
+        - include: expressions
+
+  decide_for:
+    # Syntax:
+    #     DECIDE FOR {FIRST|EVERY} condition
+    #         WHEN condition
+    #             codeblock
+    #         [WHEN ANY
+    #             codeblock]
+    #         [WHEN ALL
+    #             codeblock]
+    #         WHEN NONE
+    #             codeblock
+    #     END-DECIDE
+    - match: (?i)(?<![\w-])decide\s+for\s+(first|every)\s+condition(?![\w-])
+      scope: keyword.control.conditional.decidefor.webagent
+      push:
+        - match: (?i)(?<![\w-])when(\s+(any|all|none))?(?![\w-])
+          scope: keyword.control.conditional.decidefor.webagent
+        - match: (?i)(?<![\w-])end-decide(?![\w-])
+          scope: keyword.control.conditional.decidefor.webagent
+          pop: true
+        - include: expressions
+
+  decide_on:
+    # Syntax:
+    #     DECIDE ON {FIRST|EVERY} VALUE variable
+    #         VALUE value
+    #             codeblock
+    #         [ANY [VALUE]
+    #             codeblock]
+    #         [ALL [VALUE]
+    #             codeblock]
+    #         NONE [VALUE]
+    #             codeblock
+    #     END-DECIDE
+    - match: (?i)(?<![\w-])decide\s+on\s+(first|every)\s+value(?![\w-])
+      scope: keyword.control.conditional.decideon.webagent
+      push:
+        - match: (?i)(?<![\w-])(any(\s+value)?|all(\s+value)?|none(\s+value)?|value)(?![\w-])
+          scope: keyword.control.conditional.decideon.webagent
+        - match: (?i)(?<![\w-])end-decide(?![\w-])
+          scope: keyword.control.conditional.decideon.webagent
+          pop: true
+        - include: expressions
+
+  repeat:
+    # Syntax:
+    #     REPEAT
+    #         {WHILE condition
+    #             codeblock}
+    #         {UNTIL condition
+    #             codeblock}
+    #         {codeblock
+    #         WHILE condition}
+    #         {codeblock
+    #         UNTIL condition}
+    #     END-REPEAT
+    - match: (?i)(?<![\w-])repeat(\s+while|\s+until)?(?![\w-])
+      scope: keyword.control.conditional.repeat.webagent
+      push:
+        - match: (?i)(?<![\w-])(while|until)(?![\w-])
+          scope: keyword.control.conditional.repeat.webagent
+        - match: (?i)(?<![\w-])end-repeat(?![\w-])
+          scope: keyword.control.conditional.repeat.webagent
+          pop: true
+        - include: expressions
+
+  for:
+    # Syntax:
+    #     FOR variable = value TO value
+    #         codeblock
+    #     END-FOR
+    - match: (?i)(?<!-)(?<![\w-])for(?![\w-])
+      scope: keyword.control.conditional.for.webagent
+      push:
+        - match: (?i)(?<![\w-])to(?![\w-])
+          scope: keyword.control.conditional.for.webagent
+          set:
+            - match: (?i)(?<![\w-])end-for(?![\w-])
+              scope: keyword.control.conditional.for.webagent
+              pop: true
+            - include: expressions
+        - include: expressions
+
+  # --------------------
+  # ---- Data Manip ----
+  # --------------------
+  data_manip:
+    - include: move
+    - include: reset
+    - include: add
+    - include: subtract
+    - include: multiply
+    - include: divide
+    - include: compute
+    - include: val
+    - include: len
+    - include: compress
+    - include: examine
+
+  move:
+    # Syntax:
+    #     MOVE [BY NAME] variable TO variable
+    - match: (?i)(?<![\w-])move(\s+by\s+name)?(?![\w-])
+      scope: variable.function.move.webagent
+      push:
+        - match: (?i)(?<![\w-])to(?![\w-])
+          scope: variable.function.move.webagent
+          pop: true
+        - include: expressions
+
+  reset:
+    # Syntax:
+    #     RESET variable
+    - match: (?i)(?<![\w-])reset(?![\w-])
+      scope: variable.function.reset.webagent
+
+  add:
+    # Syntax:
+    #     ADD [ROUNDED] operand TO operand [GIVING operand]
+    - match: (?i)(?<![\w-])add(\s+rounded)?(?![\w-])
+      scope: variable.function.add.webagent
+      push:
+        - match: (?i)(?<![\w-])to(?![\w-])
+          scope: variable.function.add.webagent
+          set:
+            # Look for optional 'giving' keyword until we reach a newline.
+            - match: (?i)(?<![\w-])giving(?![\w-])
+              scope: variable.function.add.webagent
+              pop: true
+            - match: $(?=\n)
+              pop: true
+            - include: expressions
+        - include: expressions
+
+  subtract:
+    # Syntax:
+    #     SUBTRACT [ROUNDED] operand FROM operand [GIVING operand]
+    - match: (?i)(?<![\w-])subtract(\s+rounded)?(?![\w-])
+      scope: variable.function.subtract.webagent
+      push:
+        - match: (?i)(?<![\w-])from(?![\w-])
+          scope: variable.function.subtract.webagent
+          set:
+            # Look for optional 'giving' keyword until we reach a newline.
+            - match: (?i)(?<![\w-])giving(?![\w-])
+              scope: variable.function.subtract.webagent
+              pop: true
+            - match: $(?=\n)
+              pop: true
+            - include: expressions
+        - include: expressions
+
+  multiply:
+    # Syntax:
+    #     MULTIPLY [ROUNDED] operand BY operand [GIVING operand]
+    - match: (?i)(?<![\w-])multiply(\s+rounded)?(?![\w-])
+      scope: variable.function.multiply.webagent
+      push:
+        - match: (?i)(?<![\w-])by(?![\w-])
+          scope: variable.function.multiply.webagent
+          set:
+            # Look for optional 'giving' keyword until we reach a newline.
+            - match: (?i)(?<![\w-])giving(?![\w-])
+              scope: variable.function.multiply.webagent
+              pop: true
+            - match: $(?=\n)
+              pop: true
+            - include: expressions
+        - include: expressions
+
+  divide:
+    # Syntax:
+    #     DIVIDE [ROUNDED] operand INTO operand [GIVING operand]
+    - match: (?i)(?<![\w-])divide(\s+rounded)?(?![\w-])
+      scope: variable.function.divide.webagent
+      push:
+        - match: (?i)(?<![\w-])into(?![\w-])
+          scope: variable.function.divide.webagent
+          set:
+            # Look for optional 'giving' keyword until we reach a newline.
+            - match: (?i)(?<![\w-])giving(?![\w-])
+              scope: variable.function.divide.webagent
+              pop: true
+            - match: $(?=\n)
+              pop: true
+            - include: expressions
+        - include: expressions
+
+  compute:
+    # Syntax:
+    #     COMPUTE variable = expression
+    - match: (?i)(?<![\w-])compute(?![\w-])
+      scope: variable.function.compute.webagent
+      push:
+        - match: =
+          scope: keyword.operator.assignment.compute.webagent
+          pop: true
+        - include: expressions
+
+  val:
+    # Syntax:
+    #     VAL(variable)
+    - match: (?i)(?<![\w-])val(?![\w-])
+      scope: variable.function.val.webagent
+      push:
+        - match: \s*\(
+          scope: punctuation.section.arguments.begin.webagent
+          set:
+            - match: \)
+              scope: punctuation.section.arguments.end.webagent
+              pop: true
+            - include: expressions
+
+  len:
+    # Syntax:
+    #     LEN(variable)
+    - match: (?i)(?<![\w-])len(?![\w-])
+      scope: variable.function.len.webagent
+      push:
+        - match: \s*\(
+          scope: punctuation.section.arguments.begin.webagent
+          set:
+            - match: \)
+              scope: punctuation.section.arguments.end.webagent
+              pop: true
+            - include: expressions
+
+  compress:
+    # Syntax:
+    #     COMPRESS source(s) INTO variable [LEAVING NO [SPACE]]
+    - match: (?i)(?<![\w-])compress(?![\w-])
+      scope: variable.function.compress.webagent
+      push:
+        - match: (?i)(?<![\w-])into(?![\w-])
+          scope: variable.function.compress.webagent
+          set:
+            # Look for optional 'LEAVING NO [SPACE]' keyword until we reach a newline.
+            - match: (?i)(?<![\w-])leaving\s+no(\s+space)?(?![\w-])
+              scope: variable.function.compress.webagent
+              pop: true
+            - match: $(?=\n)
+              pop: true
+            - include: expressions
+        - include: expressions
+
+  examine:
+    # Syntax:
+    #     EXAMINE variable FOR variable [AND] REPLACE [FIRST] [WITH] [FULL [VALUE [OF]]] variable
+    # Or:
+    #     EXAMINE variable [AND] TRANSLATE [INTO] {UPPER|LOWER} [CASE]
+    - match: (?i)(?<![\w-])examine(?![\w-])
+      scope: variable.function.examine.webagent
+      push:
+        - match: (?i)(?<![\w-])for(?![\w-])
+          scope: variable.function.examine.webagent
+          set:
+            # Syntax:
+            #     [AND] REPLACE [FIRST] [WITH] [FULL [VALUE [OF]]] variable
+            - match: (?i)(?<![\w-])((and\s+)?replace(\s+first)?(\s+with)?(\s+full(\s+value(\s+of)?)?)?)(?![\w-])
+              scope: variable.function.examine.webagent
+              pop: true
+            - include: expressions
+        - match: (?i)(?<![\w-])((and\s+)?translate(\s+into)?\s+(upper|lower)(\s+case)?)(?![\w-])
+          scope: variable.function.examine.webagent
+          pop: true
+        - include: expressions
+
+  # ---------------
+  # ---- Other ----
+  # ---------------
+  other:
+    - include: external_variables
+    - include: c_star
+    - include: include_statement
+    - include: perform
+    - include: strings
+    - include: booleans
+    - include: numbers
+    - include: operators
+    - include: functions
+
+  external_variables:
+    # Syntax:
+    #     *VARIABLE
+    - match: (?i)(?<![\w-])\*(?=[\w#]+)
+      scope: punctuation.definition.variable.external.webagent entity.name.struct.external.webagent
+      push:
+      - match: (?i)(?<=\*)[\w#-]+
+        scope: entity.name.struct.external.webagent
+        pop: true
+
+  c_star:
+    # Syntax:
+    #     C*variable
+    - match: (?i)(?<![\w-])c\*(?=\w)
+      scope: variable.function.cstar.webagent
+
+  include_statement:
+    # Syntax:
+    #     INCLUDE filename
+    - match: (?i)(?<![\w-])include(?![\w-])
+      scope: variable.function.include.webagent
+      push:
+      - match: (?<![\w-])\s+(?![\w-])
+        scope: entity.name.namespace.webagent
+        pop: true
+      - include: expressions
+
+  perform:
+    # Syntax:
+    #     PERFORM 'command' ON target
+    - match: (?i)(?<![\w-])perform(?![\w-])
+      scope: variable.function.perform.webagent
+      push:
+        - match: (?i)(?<![\w-])on(?![\w-])
+          scope: variable.function.perform.webagent
+          pop: true
+        - include: expressions
+
+  strings:
+    # Strings begin with single quotes.
+    - match: ''''
+      scope: punctuation.definition.string.begin.webagent
+      push: inside_string
+
+  inside_string:
+    # The inside of a string ignores most other syntax rules.
+    - meta_include_prototype: false
+    - meta_scope: meta.string.webagent string.quoted.single.webagent
+
+    # Two single quotes ('') are an escape character for a single quote.
+    - match: ''''''
+      scope: constant.character.escape.webagent
+
+    # Strings end with a single quote.
+    - match: ''''
+      scope: punctuation.definition.string.end.webagent
+      pop: true
+
+  booleans:
+    - match: (?i)(?<![\w-])(true|false)(?![\w-])
+      scope: constant.language.webagent
+
+  numbers:
+    # Numbers can be integers or decimals. They can have a negative (-) sign.
+    # No match if the neighboring characters are alphanumeric or '.' characters.
+    - match: (?<![\w\.])-?(\d*\.\d+|\d+)(?![\w\.])
+      scope: constant.numeric.webagent
+
+  operators:
+    - match: \=|\^\=|>\=|<\=|>|<
+      scope: keyword.operator.comparison.webagent
+    - match: (?i)(?<![\w-])(equal\s+to|eq|not\s+equal|notequal|ne|greater\s+equal|ge|less\s+equal|le|greater\s+than|gt|less\s+than|lt)(?![\w-])
+      scope: keyword.operator.word.webagent keyword.operator.comparison.webagent
+    - match: \+|\-|\*|/
+      scope: keyword.operator.arithmetic.webagent
+    - match: (?i)(?<![\w-])(and|or|not|is)(?![\w-])
+      scope: keyword.operator.word.webagent keyword.operator.logical.webagent
+
+  functions:
+    - match: (?i)(?<![\w-])(scan|mask)(?![\w-])
+      scope: variable.function.webagent
+
+  comments:
+    # Comments begin with '/*' and finish at the end of the line.
+    - match: '/\*'
+      scope: punctuation.definition.comment.webagent
+      push:
+        # This is an anonymous context for brevity.
+        - meta_scope: comment.line.webagent
+
+        # Comments end with a newline.
+        - match: $(?=\n)
+          pop: true
+
+  # ---------------------------
+  # ---- Keywords catchall ----
+  # ---------------------------
+  catchall:
+    # "Best guess" default scopes for all WebAgent keywords.
+    # Not always accurate because some keywords can be used
+    # in many different contexts.
+    - match: (?i)(?<![\w-])add(?![\w-])
+      scope: variable.function.add.webagent
+    - match: (?i)(?<![\w-])all(?![\w-])
+      scope: keyword.control.conditional.webagent
+    - match: (?i)(?<![\w-])and(?![\w-])
+      scope: keyword.operator.word.webagent keyword.operator.logical.webagent
+    - match: (?i)(?<![\w-])any(?![\w-])
+      scope: keyword.control.conditional.webagent
+    - match: (?i)(?<![\w-])by(?![\w-])
+      scope: variable.function.webagent
+    - match: (?i)(?<![\w-])case(?![\w-])
+      scope: variable.function.examine.webagent
+    - match: (?i)(?<![\w-])compress(?![\w-])
+      scope: variable.function.compress.webagent
+    - match: (?i)(?<![\w-])compute(?![\w-])
+      scope: variable.function.compute.webagent
+    - match: (?i)(?<![\w-])condition(?![\w-])
+      scope: keyword.control.conditional.webagent
+    - match: (?i)(?<![\w-])const(?![\w-])
+      scope: storage.modifier.init.webagent
+    - match: (?i)(?<![\w-])data(?![\w-])
+      scope: keyword.control.definedata.webagent
+    - match: (?i)(?<![\w-])decide(?![\w-])
+      scope: keyword.control.conditional.decide.webagent
+    - match: (?i)(?<![\w-])define(?![\w-])
+      scope: keyword.control.definedata.webagent
+    - match: (?i)(?<![\w-])divide(?![\w-])
+      scope: variable.function.divide.webagent
+    - match: (?i)(?<![\w-])else(?![\w-])
+      scope: keyword.control.conditional.if.webagent
+    - match: (?i)(?<![\w-])end-decide(?![\w-])
+      scope: keyword.control.conditional.decide.webagent
+    - match: (?i)(?<![\w-])end-define(?![\w-])
+      scope: keyword.control.definedata.webagent
+    - match: (?i)(?<![\w-])end-for(?![\w-])
+      scope: keyword.control.conditional.for.webagent
+    - match: (?i)(?<![\w-])end-if(?![\w-])
+      scope: keyword.control.conditional.if.webagent
+    - match: (?i)(?<![\w-])end-repeat(?![\w-])
+      scope: keyword.control.conditional.repeat.webagent
+    - match: (?i)(?<![\w-])eq(?![\w-])
+      scope: keyword.operator.word.webagent keyword.operator.comparison.webagent
+    - match: (?i)(?<![\w-])equal(?![\w-])
+      scope: keyword.operator.word.webagent keyword.operator.comparison.webagent
+    - match: (?i)(?<![\w-])every(?![\w-])
+      scope: keyword.control.conditional.decide.webagent
+    - match: (?i)(?<![\w-])examine(?![\w-])
+      scope: variable.function.examine.webagent
+    - match: (?i)(?<![\w-])false(?![\w-])
+      scope: constant.language.webagent
+    - match: (?i)(?<![\w-])first(?![\w-])
+      scope: keyword.control.conditional.decide.webagent
+    - match: (?i)(?<![\w-])for(?![\w-])
+      scope: keyword.control.conditional.for.webagent
+    - match: (?i)(?<![\w-])from(?![\w-])
+      scope: variable.function.subtract.webagent
+    - match: (?i)(?<![\w-])ge(?![\w-])
+      scope: keyword.operator.word.webagent keyword.operator.comparison.webagent
+    - match: (?i)(?<![\w-])giving(?![\w-])
+      scope: variable.function.webagent
+    # - match: (?i)(?<![\w-])globals(?![\w-])
+    #   scope:
+    - match: (?i)(?<![\w-])gt(?![\w-])
+      scope: keyword.operator.word.webagent keyword.operator.comparison.webagent
+    - match: (?i)(?<![\w-])if(?![\w-])
+      scope: keyword.control.conditional.if.webagent
+    - match: (?i)(?<![\w-])ignore(?![\w-])
+      scope: keyword.control.flow.webagent
+    - match: (?i)(?<![\w-])include(?![\w-])
+      scope: variable.function.include.webagent
+    - match: (?i)(?<![\w-])init(?![\w-])
+      scope: storage.modifier.init.webagent
+    # - match: (?i)(?<![\w-])initial(?![\w-])
+    #   scope:
+    - match: (?i)(?<![\w-])into(?![\w-])
+      scope: variable.function.compress.webagent
+    - match: (?i)(?<![\w-])invoke(?![\w-])
+      scope: keyword.control.flow.webagent
+    - match: (?i)(?<![\w-])is(?![\w-])
+      scope: keyword.operator.word.webagent keyword.operator.logical.webagent
+    - match: (?i)(?<![\w-])le(?![\w-])
+      scope: keyword.operator.word.webagent keyword.operator.comparison.webagent
+    - match: (?i)(?<![\w-])leaving(?![\w-])
+      scope: variable.function.compress.webagent
+    # - match: (?i)(?<![\w-])len(?![\w-])
+    #   scope:
+    - match: (?i)(?<![\w-])lower(?![\w-])
+      scope: variable.function.examine.webagent
+    - match: (?i)(?<![\w-])lt(?![\w-])
+      scope: keyword.operator.word.webagent keyword.operator.comparison.webagent
+    - match: (?i)(?<![\w-])mask(?![\w-])
+      scope: variable.function.webagent
+    - match: (?i)(?<![\w-])move(?![\w-])
+      scope: variable.function.move.webagent
+    - match: (?i)(?<![\w-])multiply(?![\w-])
+      scope: variable.function.multiply.webagent
+    - match: (?i)(?<![\w-])name(?![\w-])
+      scope: variable.function.move.webagent
+    - match: (?i)(?<![\w-])ne(?![\w-])
+      scope: keyword.operator.word.webagent keyword.operator.comparison.webagent
+    - match: (?i)(?<![\w-])no(?![\w-])
+      scope: variable.function.compress.webagent
+    - match: (?i)(?<![\w-])none(?![\w-])
+      scope: keyword.control.conditional.decidefor.webagent
+    - match: (?i)(?<![\w-])not(?![\w-])
+      scope: keyword.operator.word.webagent keyword.operator.logical.webagent
+    - match: (?i)(?<![\w-])notequal(?![\w-])
+      scope: keyword.operator.word.webagent keyword.operator.comparison.webagent
+    - match: (?i)(?<![\w-])on(?![\w-])
+      scope: keyword.control.conditional.decideon.webagent
+    - match: (?i)(?<![\w-])or(?![\w-])
+      scope: keyword.operator.word.webagent keyword.operator.logical.webagent
+    - match: (?i)(?<![\w-])perform(?![\w-])
+      scope: variable.function.perform.webagent
+    - match: (?i)(?<![\w-])redefine(?![\w-])
+      scope: storage.modifier.redefine.webagent
+    - match: (?i)(?<![\w-])repeat(?![\w-])
+      scope: keyword.control.conditional.repeat.webagent
+    - match: (?i)(?<![\w-])replace(?![\w-])
+      scope: variable.function.examine.webagent
+    - match: (?i)(?<![\w-])reset(?![\w-])
+      scope: variable.function.reset.webagent
+    - match: (?i)(?<![\w-])rounded(?![\w-])
+      scope: variable.function.webagent
+    - match: (?i)(?<![\w-])scan(?![\w-])
+      scope: variable.function.webagent
+    # - match: (?i)(?<![\w-])session(?![\w-])
+    #   scope:
+    - match: (?i)(?<![\w-])space(?![\w-])
+      scope: variable.function.compress.webagent
+    - match: (?i)(?<![\w-])subtract(?![\w-])
+      scope: variable.function.subtract.webagent
+    - match: (?i)(?<![\w-])terminate(?![\w-])
+      scope: keyword.control.flow.webagent
+    - match: (?i)(?<![\w-])to(?![\w-])
+      scope: variable.function.move.webagent
+    - match: (?i)(?<![\w-])translate(?![\w-])
+      scope: variable.function.examine.webagent
+    - match: (?i)(?<![\w-])true(?![\w-])
+      scope: constant.language.webagent
+    - match: (?i)(?<![\w-])until(?![\w-])
+      scope: keyword.control.conditional.repeat.webagent
+    - match: (?i)(?<![\w-])upper(?![\w-])
+      scope: variable.function.examine.webagent
+    - match: (?i)(?<![\w-])using(?![\w-])
+      scope: storage.type.function.using.webagent
+    # - match: (?i)(?<![\w-])val(?![\w-])
+    #   scope:
+    - match: (?i)(?<![\w-])value(?![\w-])
+      scope: keyword.control.conditional.decideon.webagent
+    - match: (?i)(?<![\w-])when(?![\w-])
+      scope: keyword.control.conditional.decidefor.webagent
+    - match: (?i)(?<![\w-])while(?![\w-])
+      scope: keyword.control.conditional.repeat.webagent
+    - match: (?i)(?<![\w-])with(?![\w-])
+      scope: variable.function.examine.webagent
+    - match: (?i)(?<![\w-])wpage(?![\w-])
+      scope: variable.function.wpage.webagent
+    - match: (?i)(?<![\w-])write(?![\w-])
+      scope: variable.function.write.webagent
+
+  catchall_debug:
+    # Marks all reserved keywords as invalid, to more easily see
+    # which keywords were missed by previous syntax rules.
+    - match: (?i)(?<![\w-])add(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])all(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])and(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])any(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])by(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])case(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])compress(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])compute(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])condition(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])const(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])data(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])decide(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])define(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])divide(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])else(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])end-decide(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])end-define(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])end-for(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])end-if(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])end-repeat(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])eq(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])equal(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])every(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])examine(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])false(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])first(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])for(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])from(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])ge(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])giving(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])globals(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])gt(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])if(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])ignore(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])include(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])init(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])initial(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])into(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])invoke(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])is(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])le(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])leaving(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])len(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])lower(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])lt(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])mask(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])move(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])multiply(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])name(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])ne(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])no(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])none(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])not(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])notequal(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])on(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])or(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])perform(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])redefine(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])repeat(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])replace(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])reset(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])rounded(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])scan(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])session(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])space(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])subtract(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])terminate(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])to(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])translate(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])true(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])until(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])upper(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])using(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])val(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])value(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])when(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])while(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])with(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])wpage(?![\w-])
+      scope: invalid.unmatched.keyword.webagent
+    - match: (?i)(?<![\w-])write(?![\w-])
+      scope: invalid.unmatched.keyword.webagent

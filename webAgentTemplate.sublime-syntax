@@ -1,0 +1,30 @@
+%YAML 1.2
+---
+# See http://www.sublimetext.com/docs/3/syntax.html
+
+name: webAgent Template
+file_extensions:
+  - wbt
+scope: source.webagent
+
+contexts:
+  main:
+    - match: ""
+      push: "Packages/HTML/HTML.sublime-syntax"
+      with_prototype:
+        - match: \@\@
+          scope: constant.character.escape.webagent
+        - match: \@
+          scope: constant.character.escape.webagent punctuation.section.interpolation.begin.webagent
+          push:
+            - meta_scope: source.webagent.embedded
+            - match: \^
+              scope: constant.character.escape.webagent
+            - match: \|
+              scope: constant.character.escape.webagent punctuation.section.interpolation.end.webagent
+              pop: true
+        - match: <%
+          push: webAgentScript.sublime-syntax
+          with_prototype:
+            - match: (?=%>)
+              pop: true

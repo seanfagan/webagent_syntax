@@ -3,8 +3,6 @@
 # See https://www.sublimetext.com/docs/3/syntax.html
 # See https://www.sublimetext.com/docs/3/scope_naming.html
 
-# todo: wbt
-
 # todo: variable IS (Ndigits)
 # todo: use meta scopes more often
 # todo: check for bugs on patterns that search for newline
@@ -581,7 +579,7 @@ contexts:
       scope: keyword.operator.comparison.webagent
     - match: (?i)(?<![\w-])(equal\s+to|eq|not\s+equal|notequal|ne|greater\s+equal|ge|less\s+equal|le|greater\s+than|gt|less\s+than|lt)(?![\w-])
       scope: keyword.operator.word.webagent keyword.operator.comparison.webagent
-    - match: \+|\-|\*|/
+    - match: (?<=\s)[\+\-\*\/](?=\s)
       scope: keyword.operator.arithmetic.webagent
     - match: (?i)(?<![\w-])(and|or|not|is)(?![\w-])
       scope: keyword.operator.word.webagent keyword.operator.logical.webagent

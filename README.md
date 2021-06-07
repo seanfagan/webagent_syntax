@@ -1,7 +1,7 @@
-# WebAgent Syntax
-WebAgent syntax highlighting in Sublime.
+# webAgent Syntax
+webAgent syntax highlighting in Sublime.
 
-<img src="webagent-syntax-screenshot.png" alt="Screenshot of WebAgent syntax" width="50%">
+<img src="webagent-syntax-screenshot.png" alt="Screenshot of webAgent syntax" width="50%">
 
 ## Installation
 todo. Install via Package Control (eventually)
@@ -10,7 +10,7 @@ todo. Install via Package Control (eventually)
 ### Installing for development
 In Sublime, open Preferences > Browse Packages. This should open your file explorer to the Sublime directory for packages. Clone this repo here.
 
-### Word boundaries in WebAgent
+### Word boundaries in webAgent
 A "word boundary" is the boundary between a word character and a non-word character. RegEx has a symbol for word boundaries, `\b`. RegEx considers these characters to be "word characters": `a-z, A-Z, 0-9, _`. In webAgent, the hyphen should also be considered a word character (it's used the same way an underscore is used). Since webAgent's word characters differ from RegEx, we can't use rely on `\b` to find word boundaries.
 
 To find word boundaries in webAgent, we use lookaheads and lookbehinds that include hyphens as word characters:

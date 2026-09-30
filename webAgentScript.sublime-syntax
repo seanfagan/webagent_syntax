@@ -13,6 +13,7 @@ file_extensions:
   - wbc
   - wbh
 scope: source.webagent
+version: 2
 
 contexts:
   prototype:

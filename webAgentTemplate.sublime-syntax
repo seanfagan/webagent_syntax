@@ -5,26 +5,38 @@
 name: webAgent Template
 file_extensions:
   - wbt
-scope: source.webagent
+scope: text.html.webagent
+version: 2
+
+extends: Packages/HTML/HTML.sublime-syntax
 
 contexts:
-  main:
-    - match: ""
-      push: "Packages/HTML/HTML.sublime-syntax"
-      with_prototype:
-        - match: \@\@
+  prototype:
+    - meta_prepend: true
+    - include: webagent-tags
+
+  tag-attribute-value-content:
+    - meta_prepend: true
+    - include: webagent-tags
+
+  strings-common-content:
+    - meta_prepend: true
+    - include: webagent-tags
+
+  webagent-tags:
+    - match: \@\@
+      scope: constant.character.escape.webagent
+
+    - match: \@
+      scope: constant.character.escape.webagent punctuation.section.interpolation.begin.webagent
+      push:
+        - meta_scope: source.webagent.embedded
+        - match: \^
           scope: constant.character.escape.webagent
-        - match: \@
-          scope: constant.character.escape.webagent punctuation.section.interpolation.begin.webagent
-          push:
-            - meta_scope: source.webagent.embedded
-            - match: \^
-              scope: constant.character.escape.webagent
-            - match: \|
-              scope: constant.character.escape.webagent punctuation.section.interpolation.end.webagent
-              pop: true
-        - match: <%
-          push: webAgentScript.sublime-syntax
-          with_prototype:
-            - match: (?=%>)
-              pop: true
+        - match: \|
+          scope: constant.character.escape.webagent punctuation.section.interpolation.end.webagent
+          pop: true
+
+    - match: <%
+      embed: scope:source.webagent
+      escape: (?=%>)

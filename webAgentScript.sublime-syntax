@@ -206,7 +206,7 @@ contexts:
     - include: decide_on
     - include: repeat
     - include: for
-    - match: (?i)(?<![\w-])invoke|ignore|terminate(?![\w-])
+    - match: (?i)(?<![\w-])(invoke|ignore|terminate)(?![\w-])
       scope: keyword.control.flow.webagent
 
   if:

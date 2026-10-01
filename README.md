@@ -3,6 +3,8 @@ Syntax highlighting for the "webAgent" language in Sublime Text.
 
 <img src="webagent-syntax-screenshot.png" alt="Screenshot of webAgent syntax" width="500px">
 
+This package comes with a few other niceties like autocomplete snippets and shortcuts for comments and headers.
+
 ## Installation
 You can install this package from Package Control (recommended) or manually. Package Control will automatically keep the package up-to-date. Manual installation is required if you want to edit the code or contribute.
 

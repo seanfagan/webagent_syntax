@@ -7,6 +7,14 @@
     <string>source.webagent</string>
     <key>settings</key>
     <dict>
+        <key>increaseIndentPattern</key>
+        <string>(?x)
+            ^ \s* \b(define\ data|if|else|decide\ for|repeat|for)\b .* $
+        </string>
+        <key>decreaseIndentPattern</key>
+        <string>(?x)
+            ^ \s* \b(end-define|end-if|else|end-decide|end-repeat|end-for)\b .* $
+        </string>
         <key>shellVariables</key>
         <array>
             <dict>

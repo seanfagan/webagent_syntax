@@ -1,0 +1,19 @@
+{
+   "scope": "source.webagent - text.html.webagent",
+
+   "completions":
+   [
+      {
+         "trigger": "hr",
+         "contents": "/* -----------------------------------------------------------------------------",
+         "annotation": "Horizontal line",
+         "kind": "markup",
+      },
+      {
+         "trigger": "heading",
+         "contents": "/* -----------------------------------------------------------------------------\n/*            $0\n/* -----------------------------------------------------------------------------",
+         "annotation": "Section heading",
+         "kind": "markup",
+      },
+   ]
+}

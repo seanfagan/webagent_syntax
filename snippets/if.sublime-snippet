@@ -1,0 +1,10 @@
+<snippet>
+	<content><![CDATA[
+if ${1:conditional}
+	${0}
+end-if
+]]></content>
+	<tabTrigger>if</tabTrigger>
+	<scope>source.webagent - text.html.webagent</scope>
+	<description>if block</description>
+</snippet>

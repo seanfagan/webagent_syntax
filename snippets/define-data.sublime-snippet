@@ -1,0 +1,10 @@
+<snippet>
+	<content><![CDATA[
+define data
+	using ${0:pda}
+end-define
+]]></content>
+	<tabTrigger>define data</tabTrigger>
+	<scope>source.webagent - text.html.webagent</scope>
+	<description>define data block</description>
+</snippet>

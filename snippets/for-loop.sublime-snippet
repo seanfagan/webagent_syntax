@@ -1,0 +1,10 @@
+<snippet>
+	<content><![CDATA[
+for ${1:#i} = ${2:begin} to ${3:end}
+	${0}
+end-for
+]]></content>
+	<tabTrigger>for</tabTrigger>
+	<scope>source.webagent - text.html.webagent</scope>
+	<description>for loop</description>
+</snippet>

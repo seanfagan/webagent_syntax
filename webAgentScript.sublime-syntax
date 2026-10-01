@@ -55,7 +55,7 @@ contexts:
     - match: (?i)(?<![\w-])using(?![\w-])
       scope: storage.type.function.using.webagent
       push:
-        - match: (?<![\w-])\s+(?![\w-])
+        - match: (?<![\w-])[\w-]+(?![\w-])
           scope: entity.name.namespace.webagent
           pop: true
 
